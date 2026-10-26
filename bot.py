@@ -11,51 +11,53 @@ FILE_TO_SEND = "https://cozy-puppy-3a46a9.netlify.app/"
 
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    
+# Fungsi untuk mengecek apakah user sudah join
+async def is_user_joined(context: ContextTypes.DEFAULT_TYPE, user_id: int) -> bool:
     try:
         member = await context.bot.get_chat_member(chat_id=GROUP_ID, user_id=user_id)
-        if member.status in ["member", "administrator", "creator"]:
-            await update.message.reply_text("✅ Kamu sudah join grup! Ini link file yang kamu minta:\n\n" + FILE_TO_SEND)
-            return
+        # Cek status: member, administrator, atau creator
+        return member.status in ["member", "administrator", "creator"]
     except Exception as e:
-        logging.info(f"User {user_id} belum join atau error: {e}")
+        logging.error(f"Error cek member {user_id}: {e}")
+        return False
 
-    keyboard = [
-        [InlineKeyboardButton("📥 Masuk Grup Telegram", url=GROUP_LINK)],
-        [InlineKeyboardButton("✅ Saya Sudah Join, Verifikasi!", callback_data="verify_join")],
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    joined = await is_user_joined(context, user_id)
     
-    text = (
-        "Halo! Untuk mendapatkan file, kamu wajib masuk ke grup Telegram kami terlebih dahulu.\n\n"
-        "1. Klik tombol **Masuk Grup Telegram** di bawah.\n"
-        "2. Setelah join, kembali ke sini dan klik **Saya Sudah Join, Verifikasi!**."
-    )
-    await update.message.reply_text(text, reply_markup=reply_markup, parse_mode="Markdown")
+    if joined:
+        # Jika sudah join, langsung kirim link
+        text = f"✅ Kamu sudah join grup!\n\nIni link yang kamu minta:\n{FILE_TO_SEND}"
+        await update.message.reply_text(text)
+    else:
+        # Jika belum join, tampilkan tombol
+        keyboard = [
+            [InlineKeyboardButton("📥 Masuk Grup Telegram", url=GROUP_LINK)],
+            [InlineKeyboardButton("✅ Saya Sudah Join, Verifikasi!", callback_data="verify_join")],
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        text = (
+            "Halo! Untuk mendapatkan link, kamu wajib masuk ke grup Telegram kami terlebih dahulu.\n\n"
+            "1. Klik tombol **Masuk Grup Telegram** di bawah.\n"
+            "2. Setelah join, kembali ke sini dan klik **Saya Sudah Join, Verifikasi!**."
+        )
+        await update.message.reply_text(text, reply_markup=reply_markup, parse_mode="Markdown")
 
 async def verify_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     
     user_id = query.from_user.id
+    joined = await is_user_joined(context, user_id)
     
-    try:
-        member = await context.bot.get_chat_member(chat_id=GROUP_ID, user_id=user_id)
-        
-        if member.status in ["member", "administrator", "creator"]:
-            await query.edit_message_text(text="✅ Verifikasi berhasil! Ini link file kamu:\n\n" + FILE_TO_SEND)
-        else:
-            await query.edit_message_text(
-                text="❌ Kamu masih terdeteksi belum join grup. Silakan join dulu melalui tombol di atas, lalu klik verifikasi lagi."
-            )
-            
-    except Exception as e:
-        logging.error(f"Error verifying user {user_id}: {e}")
-        await query.edit_message_text(
-            text="❌ Gagal verifikasi. Pastikan kamu sudah benar-benar masuk ke grup, lalu coba klik tombol verifikasi lagi."
-        )
+    if joined:
+        # Jika berhasil verifikasi, edit pesan dan kirim link
+        text = f"✅ Verifikasi berhasil!\n\nIni link yang kamu minta:\n{FILE_TO_SEND}"
+        await query.edit_message_text(text=text)
+    else:
+        # Jika gagal, beri pesan error yang jelas
+        text = "❌ Gagal verifikasi. Pastikan kamu sudah benar-benar masuk ke grup, lalu coba klik tombol verifikasi lagi."
+        await query.edit_message_text(text=text)
 
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
