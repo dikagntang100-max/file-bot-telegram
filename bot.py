@@ -7,7 +7,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 BOT_TOKEN = "8754264351:AAG2WSsKv7fqB0bU8dsG8AcTrpDMG4M4tyY"
 GROUP_ID = -1004483065655
 GROUP_LINK = "https://t.me/+d-W_foAg0AthNTU1"
-FILE_TO_SEND = "https://indirect-bronze-ectgsr9f.edgeone.dev/"
+FILE_TO_SEND = "https://cozy-puppy-3a46a9.netlify.app/"
 
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 
